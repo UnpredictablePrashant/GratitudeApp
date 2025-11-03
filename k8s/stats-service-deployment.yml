@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stats-service-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: stats-service
+  template:
+    metadata:
+      labels:
+        component: stats-service
+    spec:
+      containers:
+        - name: stats-service
+          image: prashantdey/merndemoapp:statsservicev1.0
+          ports:
+            - containerPort: 50053
+          env:
+            - name: PGUSER
+              value: postgres
+            - name: PGHOST
+              value: postgres-cluster-ip-service
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pgpassword
+                  key: PGPASSWORD

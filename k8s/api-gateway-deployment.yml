@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: api-gateway
+  template:
+    metadata:
+      labels:
+        component: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: prashantdey/merndemoapp:apigatewayv1.0
+          ports:
+            - containerPort: 5000
+          env:
+            - name: ENTRIES_SERVICE_ADDR
+              value: entries-cluster-ip-service:50051
+            - name: OPENAI_MODEL
+              value: gpt-4o-mini
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-api
+                  key: OPENAI_API_KEY

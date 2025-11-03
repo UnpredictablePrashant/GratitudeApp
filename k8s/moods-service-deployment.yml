@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moods-service-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: moods-service
+  template:
+    metadata:
+      labels:
+        component: moods-service
+    spec:
+      containers:
+        - name: moods-service
+          image: prashantdey/merndemoapp:moodsservicev1.0
+          ports:
+            - containerPort: 50052
+          env:
+            - name: PGUSER
+              value: postgres
+            - name: PGHOST
+              value: postgres-cluster-ip-service
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pgpassword
+                  key: PGPASSWORD

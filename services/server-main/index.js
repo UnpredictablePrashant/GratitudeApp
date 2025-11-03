@@ -79,6 +79,11 @@ app.post("/entries", async (req, res) => {
   }
 });
 
-app.listen(5000, err => {
-  console.log("Listening");
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, err => {
+  if (err) {
+    console.error("Failed to start server", err);
+    process.exit(1);
+  }
+  console.log(`Server listening on :${PORT}`);
 });

@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stats-api-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: stats-api
+  template:
+    metadata:
+      labels:
+        component: stats-api
+    spec:
+      containers:
+        - name: stats-api
+          image: prashantdey/merndemoapp:statsapiv1.0
+          ports:
+            - containerPort: 5003
+          env:
+            - name: STATS_SERVICE_ADDR
+              value: stats-service-cluster-ip-service:50053

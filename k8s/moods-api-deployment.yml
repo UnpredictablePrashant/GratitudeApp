@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moods-api-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: moods-api
+  template:
+    metadata:
+      labels:
+        component: moods-api
+    spec:
+      containers:
+        - name: moods-api
+          image: prashantdey/merndemoapp:moodsapiv1.0
+          ports:
+            - containerPort: 5002
+          env:
+            - name: MOODS_SERVICE_ADDR
+              value: moods-service-cluster-ip-service:50052

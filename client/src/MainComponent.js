@@ -32,6 +32,46 @@ const MainComponent = () => {
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(null);
 
+  const [legacyValues, setLegacyValues] = useState([]);
+  const [legacyValueInput, setLegacyValueInput] = useState("");
+  const [legacyLoading, setLegacyLoading] = useState(false);
+  const [legacyError, setLegacyError] = useState(null);
+
+  const [aiInsights, setAiInsights] = useState(null);
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
+  const [aiInsightsError, setAiInsightsError] = useState(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiPromptLoading, setAiPromptLoading] = useState(false);
+  const [aiPromptError, setAiPromptError] = useState(null);
+  const [aiSummary, setAiSummary] = useState(null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState(null);
+  const [goalInput, setGoalInput] = useState("");
+  const [aiGoalReflection, setAiGoalReflection] = useState([]);
+  const [aiGoalsLoading, setAiGoalsLoading] = useState(false);
+  const [aiGoalsError, setAiGoalsError] = useState(null);
+  const [aiAnomaly, setAiAnomaly] = useState(null);
+  const [aiAnomalyLoading, setAiAnomalyLoading] = useState(false);
+  const [aiAnomalyError, setAiAnomalyError] = useState(null);
+  const [aiPattern, setAiPattern] = useState(null);
+  const [aiPatternLoading, setAiPatternLoading] = useState(false);
+  const [aiPatternError, setAiPatternError] = useState(null);
+  const [voiceNote, setVoiceNote] = useState("");
+  const [aiTranscript, setAiTranscript] = useState(null);
+  const [aiTranscriptLoading, setAiTranscriptLoading] = useState(false);
+  const [aiTranscriptError, setAiTranscriptError] = useState(null);
+  const [partnerShare, setPartnerShare] = useState(null);
+  const [partnerShareLoading, setPartnerShareLoading] = useState(false);
+  const [partnerShareError, setPartnerShareError] = useState(null);
+  const [aiChatMessages, setAiChatMessages] = useState([
+    {
+      role: "assistant",
+      content: "I'm your AI mentor. What's on your mind today?",
+    },
+  ]);
+  const [aiChatInput, setAiChatInput] = useState("");
+  const [aiChatLoading, setAiChatLoading] = useState(false);
+
   const entryFormRef = useRef(null);
 
   const getStats = useCallback(async () => {
@@ -110,6 +150,129 @@ const MainComponent = () => {
     [moodValue, moodNote, getMoods, getStats]
   );
 
+  const fetchAiInsights = useCallback(async (payload) => {
+    try {
+      setAiInsightsLoading(true);
+      setAiInsightsError(null);
+      const response = await axios.post("/api/ai/insights", payload);
+      setAiInsights(response.data.insights || null);
+    } catch (e) {
+      const message =
+        e?.response?.data?.error ||
+        "Could not load mentor insights. Ensure OPENAI_API_KEY is configured on the gateway.";
+      setAiInsightsError(message);
+    } finally {
+      setAiInsightsLoading(false);
+    }
+  }, []);
+
+  const refreshAiInsights = useCallback(() => {
+    if (!entries.length && !moods.length && !stats) {
+      setAiInsights(null);
+      setAiInsightsError("Add at least one entry or mood to request AI insights.");
+      return;
+    }
+    const latestEntry = entries[0] || null;
+    const latestMood = moods[0] || null;
+    const statsSnapshot = stats
+      ? {
+          total_entries: stats.total_entries,
+          entries_today: stats.entries_today,
+          streak_days: stats.streak_days,
+          last7_days: stats.last7_days,
+          mood_trend: stats.mood_trend,
+        }
+      : null;
+    fetchAiInsights({
+      entry: latestEntry?.text || "",
+      mood: latestMood
+        ? {
+            mood: latestMood.mood,
+            note: latestMood.note || "",
+          }
+        : null,
+      stats: statsSnapshot,
+      goals: [],
+    });
+  }, [entries, moods, stats, fetchAiInsights]);
+
+  const fetchAiPrompt = useCallback(async () => {
+    try {
+      setAiPromptLoading(true);
+      setAiPromptError(null);
+      const latestEntry = entries[0]?.text || "";
+      const activeMood = moods[0]?.mood || "curious";
+      const response = await axios.post("/api/ai/prompt", {
+        entry: latestEntry,
+        mood: activeMood,
+        focus: entryQuery || "",
+      });
+      setAiPrompt(response.data.prompt || "");
+    } catch (e) {
+      const message =
+        e?.response?.data?.error ||
+        "Could not generate a prompt. Confirm the API gateway has access to OPENAI_API_KEY.";
+      setAiPromptError(message);
+    } finally {
+      setAiPromptLoading(false);
+    }
+  }, [entries, moods, entryQuery]);
+
+  const getLegacyValues = useCallback(async () => {
+    try {
+      setLegacyLoading(true);
+      setLegacyError(null);
+      const response = await axios.get("/api/server/values/all");
+      const payload = response.data ?? {};
+      const rawRows = Array.isArray(payload.rows) ? payload.rows : Array.isArray(payload) ? payload : [];
+      const normalized = rawRows
+        .map((item, index) => {
+          if (typeof item === "number") {
+            return { id: `${index}-${item}`, number: item };
+          }
+          const number = Number(item?.number ?? item?.value ?? item);
+          if (Number.isNaN(number)) {
+            return null;
+          }
+          const idSource = item?.id ?? item?.number ?? item?.value ?? number;
+          return { id: `${index}-${idSource}`, number };
+        })
+        .filter(Boolean);
+      setLegacyValues(normalized);
+    } catch (e) {
+      setLegacyError("Could not load server values. Please try again.");
+    } finally {
+      setLegacyLoading(false);
+    }
+  }, []);
+
+  const saveLegacyValue = useCallback(
+    async (event) => {
+      event.preventDefault();
+      const trimmed = legacyValueInput.trim();
+      if (!trimmed) {
+        setLegacyError("Enter a number before submitting.");
+        return;
+      }
+      if (!/^-?\d+$/.test(trimmed)) {
+        setLegacyError("Only whole numbers are supported.");
+        return;
+      }
+      try {
+        setLegacyError(null);
+        setLegacyLoading(true);
+        await axios.post("/api/server/values", { value: trimmed });
+        setLegacyValueInput("");
+        await getLegacyValues();
+      } catch (e) {
+        setLegacyError("Could not send the value to the server. Please retry.");
+      } finally {
+        setLegacyLoading(false);
+      }
+    },
+    [legacyValueInput, getLegacyValues]
+  );
+
   useEffect(() => {
     getEntries();
   }, [getEntries]);
@@ -121,6 +284,20 @@ const MainComponent = () => {
   useEffect(() => {
     getStats();
   }, [getStats]);
+
+  useEffect(() => {
+    if (!entries.length && !moods.length && !stats) return;
+    refreshAiInsights();
+  }, [entries, moods, stats, refreshAiInsights]);
+
+  useEffect(() => {
+    if ((entries.length === 0 && moods.length === 0) || aiPrompt) return;
+    fetchAiPrompt();
+  }, [entries, moods, aiPrompt, fetchAiPrompt]);
+
+  useEffect(() => {
+    getLegacyValues();
+  }, [getLegacyValues]);
 
   const filteredEntries = useMemo(() => {
     if (!entryQuery.trim()) return entries;
@@ -438,6 +615,132 @@ const MainComponent = () => {
           ) : (
             <div className="mc-empty">No stats yet. Add entries and moods to unlock insights.</div>
           )}
+        </div>
+
+        <div className="mc-card">
+          <div className="mc-header">
+            <h2 className="mc-title">
+              <span className="mc-badge" aria-hidden>
+                🤖
+              </span>
+              AI Mentor
+            </h2>
+            <div className="mc-controls">
+              <button className="btn btn-ghost" onClick={refreshAiInsights} disabled={aiInsightsLoading}>
+                {aiInsightsLoading ? "Analyzing..." : "Refresh insights"}
+              </button>
+              <button className="btn btn-ghost" onClick={fetchAiPrompt} disabled={aiPromptLoading}>
+                {aiPromptLoading ? "Generating..." : "New prompt"}
+              </button>
+            </div>
+          </div>
+
+          {(aiInsightsLoading || aiInsightsError) && (
+            <div className={`mc-status ${aiInsightsError ? "error" : "loading"}`} role="status" aria-live="polite">
+              {aiInsightsError ? aiInsightsError : "Running emotional analysis..."}
+            </div>
+          )}
+
+          {aiInsights ? (
+            <div className="stats-grid">
+              <div className="stat-card">
+                <span className="stat-label">Primary emotion</span>
+                <span className="stat-value">{aiInsights.primary_emotion || "-"}</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-label">Risk level</span>
+                <span className="stat-value">{aiInsights.risk_level || "low"}</span>
+              </div>
+              <div className="stat-card stat-card--wide">
+                <span className="stat-label">Summary</span>
+                <p className="stat-value">{aiInsights.summary || "Mentor summary unavailable."}</p>
+              </div>
+              <div className="stat-card stat-card--wide">
+                <span className="stat-label">Reflection</span>
+                <p className="stat-value">{aiInsights.reflection || "You're on track—keep reflecting daily."}</p>
+              </div>
+              <div className="stat-card stat-card--wide">
+                <span className="stat-label">Action item</span>
+                <p className="stat-value">{aiInsights.action_item || "Share gratitude with someone today."}</p>
+              </div>
+              <div className="stat-card stat-card--wide">
+                <span className="stat-label">Partner share</span>
+                <p className="stat-value">{aiInsights.partner_share || "Let them know you're grateful for their support."}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="mc-empty">Log gratitude or mood entries to unlock mentor insights.</div>
+          )}
+
+          <div className="mc-subtitle">Daily AI prompt</div>
+          <div className="mc-values">
+            {aiPromptError ? (
+              <div className="mc-empty">{aiPromptError}</div>
+            ) : (
+              <div className="entry">
+                <span className="chip">Prompt</span>
+                <span className="entry-meta">{aiPrompt || (aiPromptLoading ? "Generating..." : "Waiting for mentor...")}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mc-card">
+          <div className="mc-header">
+            <h2 className="mc-title">
+              <span className="mc-badge" aria-hidden>
+                ??️
+              </span>
+              Server Diagnostics
+            </h2>
+            <button className="btn btn-ghost" onClick={getLegacyValues} disabled={legacyLoading}>
+              {legacyLoading ? "Refreshing." : "Refresh"}
+            </button>
+          </div>
+
+          <p className="mc-subtitle">
+            Talk directly to the Node server microservice on its dedicated port (5001) to verify the ingress wiring.
+          </p>
+
+          {(legacyLoading || legacyError) && (
+            <div className={`mc-status ${legacyError ? "error" : "loading"}`} role="status" aria-live="polite">
+              {legacyError ? legacyError : "Loading server values."}
+            </div>
+          )}
+
+          <form className="mc-form" onSubmit={saveLegacyValue}>
+            <label className="mc-label" htmlFor="legacy-value-input">
+              Publish an integer to /values
+            </label>
+            <div className="input-row">
+              <input
+                id="legacy-value-input"
+                className="input"
+                type="number"
+                inputMode="numeric"
+                value={legacyValueInput}
+                disabled={legacyLoading}
+                placeholder="Enter any whole number"
+                onChange={(event) => setLegacyValueInput(event.target.value)}
+              />
+              <button className="btn btn-primary" disabled={legacyLoading || !legacyValueInput.trim()}>
+                Send
+              </button>
+            </div>
+            <small className="mc-hint">Great for smoke-testing the dedicated server pod.</small>
+          </form>
+
+          <div className="mc-values">
+            {legacyValues.length === 0 && !legacyLoading ? (
+              <div className="mc-empty">No numbers stored yet. Submit one above.</div>
+            ) : (
+              legacyValues.map((item, index) => (
+                <div className="entry" key={item.id}>
+                  <span className="chip">#{index + 1}</span>
+                  <span className="entry-meta">{item.number}</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

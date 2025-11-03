@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-service
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api/journal/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-gateway-cluster-ip-service
+                port:
+                  number: 5000
+          - path: /api/(ai/?.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-gateway-cluster-ip-service
+                port:
+                  number: 5000
+          - path: /api/entries/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-gateway-cluster-ip-service
+                port:
+                  number: 5000
+          - path: /api/server/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: server-cluster-ip-service
+                port:
+                  number: 5001
+          - path: /api/moods/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: moods-api-cluster-ip-service
+                port:
+                  number: 5002
+          - path: /api/stats/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: stats-api-cluster-ip-service
+                port:
+                  number: 5003
+          - path: /?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: client-cluster-ip-service
+                port:
+                  number: 3000

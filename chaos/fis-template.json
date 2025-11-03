@@ -1,0 +1,36 @@
+{
+  "description": "CPU Stress on pods in server-deployment",
+  "targets": {
+    "serverPods": {
+      "resourceType": "aws:eks:pod",
+      "selectionMode": "COUNT(1)",
+      "parameters": {
+        "clusterIdentifier": "mck-demo",
+        "namespace": "default",
+        "selectorType": "deploymentName",
+        "selectorValue": "server-deployment"
+      }
+    }
+  },
+  "actions": {
+    "cpuStress": {
+      "actionId": "aws:eks:pod-cpu-stress",
+      "description": "Introduce CPU load",
+      "parameters": {
+        "kubernetesServiceAccount": "fis-sa",
+        "duration": "PT3M",
+        "percent": "90",
+        "workers": "1"
+      },
+      "targets": {
+        "Pods": "serverPods"
+      }
+    }
+  },
+  "stopConditions": [
+    {
+      "source": "none"
+    }
+  ],
+  "roleArn": "arn:aws:iam::181160818749:role/awsfis-demo-prashant"
+}
