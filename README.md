@@ -53,7 +53,59 @@ Example to generate a base64-encoded Postgres password:
 echo -n "<new-password>" | base64
 ```
 
-### 5) Apply manifests
+### 5) (Optional) Build images and push to ECR
+
+If you want to build from scratch, create ECR repos, build Docker images, and push them. After pushing, update the `image:` fields in the Kubernetes manifests to point at your ECR images.
+
+```bash
+export AWS_ACCOUNT_ID="<account-id>"
+export AWS_REGION="<region>"
+export TAG="<tag>"
+export ECR_BASE="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+
+aws ecr create-repository --repository-name gratitudeapp-client
+aws ecr create-repository --repository-name gratitudeapp-api-gateway
+aws ecr create-repository --repository-name gratitudeapp-entries
+aws ecr create-repository --repository-name gratitudeapp-moods-api
+aws ecr create-repository --repository-name gratitudeapp-moods-service
+aws ecr create-repository --repository-name gratitudeapp-server
+aws ecr create-repository --repository-name gratitudeapp-stats-api
+aws ecr create-repository --repository-name gratitudeapp-stats-service
+
+aws ecr get-login-password --region "$AWS_REGION" | \
+  docker login --username AWS --password-stdin "$ECR_BASE"
+
+docker build -t "$ECR_BASE/gratitudeapp-client:$TAG" client
+docker build -t "$ECR_BASE/gratitudeapp-api-gateway:$TAG" services/api-gateway
+docker build -t "$ECR_BASE/gratitudeapp-entries:$TAG" services/entries-service
+docker build -t "$ECR_BASE/gratitudeapp-moods-api:$TAG" services/moods-api
+docker build -t "$ECR_BASE/gratitudeapp-moods-service:$TAG" services/moods-service
+docker build -t "$ECR_BASE/gratitudeapp-server:$TAG" services/server-main
+docker build -t "$ECR_BASE/gratitudeapp-stats-api:$TAG" services/stats-api
+docker build -t "$ECR_BASE/gratitudeapp-stats-service:$TAG" services/stats-service
+
+docker push "$ECR_BASE/gratitudeapp-client:$TAG"
+docker push "$ECR_BASE/gratitudeapp-api-gateway:$TAG"
+docker push "$ECR_BASE/gratitudeapp-entries:$TAG"
+docker push "$ECR_BASE/gratitudeapp-moods-api:$TAG"
+docker push "$ECR_BASE/gratitudeapp-moods-service:$TAG"
+docker push "$ECR_BASE/gratitudeapp-server:$TAG"
+docker push "$ECR_BASE/gratitudeapp-stats-api:$TAG"
+docker push "$ECR_BASE/gratitudeapp-stats-service:$TAG"
+```
+
+Update the image values in these files to match your ECR account/region/tag:
+
+- `k8s/client-deployment.yml`
+- `k8s/api-gateway-deployment.yml`
+- `k8s/entries-deployment.yml`
+- `k8s/moods-api-deployment.yml`
+- `k8s/moods-service-deployment.yml`
+- `k8s/server-deployment.yml`
+- `k8s/stats-api-deployment.yml`
+- `k8s/stats-service-deployment.yml`
+
+### 6) Apply manifests
 
 Apply the storage class, secrets, and application manifests in order:
 
@@ -84,7 +136,7 @@ kubectl apply -f k8s/client-service.yml
 kubectl apply -f k8s/ingress-service.yml
 ```
 
-### 6) Verify and access the app
+### 7) Verify and access the app
 
 ```bash
 kubectl get pods
