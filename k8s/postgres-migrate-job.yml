@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-migrate-moods
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: postgres-migrate-moods
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: psql
+          image: postgres:18
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pgpassword
+                  key: PGPASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              psql -h postgres-cluster-ip-service -U postgres -d postgres <<'SQL'
+              CREATE TABLE IF NOT EXISTS moods (
+                id SERIAL PRIMARY KEY,
+                mood TEXT NOT NULL,
+                note TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+              );
+              SQL

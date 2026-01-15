@@ -16,6 +16,9 @@ spec:
         - name: postgres-storage
           persistentVolumeClaim:
             claimName: database-persistent-volume-claim
+        - name: postgres-init
+          configMap:
+            name: postgres-init-sql
       containers:
         - name: postgres
           image: postgres:18
@@ -24,6 +27,8 @@ spec:
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql
+            - name: postgres-init
+              mountPath: /docker-entrypoint-initdb.d
           env:
             - name: POSTGRES_PASSWORD
               valueFrom:

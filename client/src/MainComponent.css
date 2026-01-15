@@ -229,6 +229,16 @@
   gap: 6px;
 }
 
+.entry-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.entry-action {
+  align-self: flex-start;
+}
+
 .entry-meta {
   color: var(--mc-muted);
   font-size: 12px;

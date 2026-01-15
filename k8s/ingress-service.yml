@@ -31,6 +31,13 @@ spec:
                 name: api-gateway-cluster-ip-service
                 port:
                   number: 5000
+          - path: /api/files/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: files-service-cluster-ip-service
+                port:
+                  number: 5004
           - path: /api/server/?(.*)
             pathType: ImplementationSpecific
             backend:

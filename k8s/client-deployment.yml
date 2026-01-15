@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
         - name: client
-          image: prashantdey/merndemoapp:clientv1.5
+          image: prashantdey/merndemoapp:clientv1.6
           ports:
             - containerPort: 3000

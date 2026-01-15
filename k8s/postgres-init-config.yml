@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-sql
+data:
+  001-create-moods.sql: |
+    CREATE TABLE IF NOT EXISTS moods (
+      id SERIAL PRIMARY KEY,
+      mood TEXT NOT NULL,
+      note TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );

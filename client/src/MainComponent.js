@@ -36,6 +36,11 @@ const MainComponent = () => {
   const [legacyValueInput, setLegacyValueInput] = useState("");
   const [legacyLoading, setLegacyLoading] = useState(false);
   const [legacyError, setLegacyError] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [filesError, setFilesError] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileUploadLoading, setFileUploadLoading] = useState(false);
 
   const [aiInsights, setAiInsights] = useState(null);
   const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
@@ -73,6 +78,7 @@ const MainComponent = () => {
   const [aiChatLoading, setAiChatLoading] = useState(false);
 
   const entryFormRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const getStats = useCallback(async () => {
     try {
@@ -273,6 +279,49 @@ const MainComponent = () => {
     [legacyValueInput, getLegacyValues]
   );
 
+  const getFiles = useCallback(async () => {
+    try {
+      setFilesLoading(true);
+      setFilesError(null);
+      const response = await axios.get("/api/files/list?limit=50");
+      const payload = response.data || {};
+      setFiles(Array.isArray(payload.files) ? payload.files : []);
+    } catch (e) {
+      setFilesError("Could not load files. Check the files service configuration.");
+    } finally {
+      setFilesLoading(false);
+    }
+  }, []);
+
+  const uploadFile = useCallback(
+    async (event) => {
+      event.preventDefault();
+      if (!selectedFile) {
+        setFilesError("Select a file before uploading.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      try {
+        setFilesError(null);
+        setFileUploadLoading(true);
+        await axios.post("/api/files/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        getFiles();
+      } catch (e) {
+        setFilesError("Could not upload file. Please retry.");
+      } finally {
+        setFileUploadLoading(false);
+      }
+    },
+    [selectedFile, getFiles]
+  );
+
   useEffect(() => {
     getEntries();
   }, [getEntries]);
@@ -299,6 +348,10 @@ const MainComponent = () => {
     getLegacyValues();
   }, [getLegacyValues]);
 
+  useEffect(() => {
+    getFiles();
+  }, [getFiles]);
+
   const filteredEntries = useMemo(() => {
     if (!entryQuery.trim()) return entries;
     const lowered = entryQuery.toLowerCase();
@@ -313,6 +366,11 @@ const MainComponent = () => {
   const topMood = sortedMoodTrend[0];
   const topMoodMeta = topMood ? findMoodMeta(topMood.mood) : null;
   const maxLast7 = statsLast7.reduce((max, day) => (day.count > max ? day.count : max), 0) || 1;
+  const fileNameForKey = (key) => {
+    if (!key) return "file";
+    const parts = String(key).split("/").filter(Boolean);
+    return parts[parts.length - 1] || key;
+  };
 
   const todayLabel = useMemo(() => {
     try {
@@ -683,7 +741,73 @@ const MainComponent = () => {
               </div>
             )}
           </div>
-        </div>
+        </div>
+        <div className="mc-card">
+          <div className="mc-header">
+            <h2 className="mc-title">
+              <span className="mc-badge" aria-hidden>
+                FS
+              </span>
+              File Library
+            </h2>
+            <button className="btn btn-ghost" onClick={getFiles} disabled={filesLoading}>
+              {filesLoading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
+
+          <p className="mc-subtitle">Upload a file to S3 and download it later.</p>
+
+          {(filesLoading || filesError) && (
+            <div className={`mc-status ${filesError ? "error" : "loading"}`} role="status" aria-live="polite">
+              {filesError ? filesError : "Loading files..."}
+            </div>
+          )}
+
+          <form className="mc-form" onSubmit={uploadFile}>
+            <label className="mc-label" htmlFor="file-input">
+              Choose a file to upload
+            </label>
+            <div className="input-row">
+              <input
+                id="file-input"
+                className="input"
+                type="file"
+                ref={fileInputRef}
+                onChange={(event) => {
+                  setSelectedFile(event.target.files && event.target.files[0] ? event.target.files[0] : null);
+                }}
+              />
+              <button className="btn btn-primary" disabled={!selectedFile || fileUploadLoading}>
+                {fileUploadLoading ? "Uploading..." : "Upload"}
+              </button>
+            </div>
+            <small className="mc-hint">Max size controlled by FILE_MAX_MB on the files service.</small>
+          </form>
+
+          <div className="mc-values">
+            {files.length === 0 && !filesLoading ? (
+              <div className="mc-empty">No files uploaded yet.</div>
+            ) : (
+              files.map((item) => (
+                <div className="entry" key={item.key}>
+                  <span className="chip">{fileNameForKey(item.key)}</span>
+                  <span className="entry-meta">
+                    {item.lastModified ? new Date(item.lastModified).toLocaleString() : ""}
+                    {item.size ? ` · ${Math.round(item.size / 1024)} KB` : ""}
+                  </span>
+                  <div className="entry-actions">
+                    <a
+                      className="btn btn-ghost entry-action"
+                      href={`/api/files/download?key=${encodeURIComponent(item.key)}`}
+                    >
+                      Download
+                    </a>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
         <div className="mc-card">
           <div className="mc-header">
             <h2 className="mc-title">

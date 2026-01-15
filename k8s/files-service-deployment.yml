@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: files-service-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: files-service
+  template:
+    metadata:
+      labels:
+        component: files-service
+    spec:
+      serviceAccountName: files-service-sa
+      containers:
+        - name: files-service
+          image: prashantdey/merndemoapp:fileservice1.0
+          ports:
+            - containerPort: 5004
+          env:
+            - name: PORT
+              value: "5004"
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: S3_BUCKET
+              value: "prashant-mckinsey-bucket"
+            - name: S3_PREFIX
+              value: "gratitude-uploads"
+            - name: FILE_MAX_MB
+              value: "10"
